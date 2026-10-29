@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8">
+    <title>3D модель из Metashape</title>
+    <style>
+      body { margin: 0; overflow: hidden; background: #f0f0f0; }
+      canvas { display: block; }
+    </style>
+  </head>
+  <body>
+    <!-- Подключаем Three.js через CDN -->
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+          "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+      }
+    </script>
+
+    <script type="module">
+      import * as THREE from 'three';
+      import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+      import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+      // Сцена, камера, рендерер
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+      const renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      document.body.appendChild(renderer.domElement);
+
+      // Освещение (обязательно для видимости текстур)
+      const ambientLight = new THREE.AmbientLight(0xffffff, 1.2);
+      scene.add(ambientLight);
+
+      const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
+      dirLight.position.set(5, 10, 7);
+      scene.add(dirLight);
+      dirLight.castShadow = true;
+
+      // Загрузка модели
+      const loader = new GLTFLoader();
+      loader.load('model.glb', (gltf) => {
+        const model = gltf.scene;
+        // Центрируем модель по bounding box
+        const box = new THREE.Box3().setFromObject(model);
+        const center = box.getCenter(new THREE.Vector3());
+        const size = box.getSize(new THREE.Vector3());
+
+        model.position.sub(center); // центрируем
+        scene.add(model);
+
+        // Подбираем масштаб, чтобы модель влезала в кадр
+        const scale = 2 / Math.max(size.x, size.y, size.z);
+        model.scale.multiplyScalar(scale);
+      }, undefined, (err) => {
+        console.error('Ошибка загрузки модели:', err);
+        alert('Не удалось загрузить модель. Проверьте имя файла и консоль браузера (F12).');
+      });
+
+      // Управление камерой (OrbitControls)
+      const controls = new OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.05;
+      controls.maxPolarAngle = Math.PI / 1.5; // ограничение угла сверху
+
+      // Позиция камеры (подберите под вашу модель)
+      camera.position.set(0, 5, 10);
+
+      // Анимация
+      function animate() {
+        requestAnimationFrame(animate);
+        controls.update();
+        renderer.render(scene, camera);
+      }
+      animate();
+
+      // Адаптация под изменение размера окна
+      window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      });
+    </script>
+  </body>
+</html>
